@@ -25,7 +25,7 @@ from Screens.InfoBarGenerics import InfoBarShowHide, \
 	InfoBarSubserviceSelection, InfoBarShowMovies, \
 	InfoBarServiceNotifications, InfoBarPVRState, InfoBarCueSheetSupport, InfoBarSimpleEventView, InfoBarBuffer, \
 	InfoBarSummarySupport, InfoBarMoviePlayerSummarySupport, InfoBarTimeshiftState, InfoBarTeletextPlugin, InfoBarExtensions, \
-	InfoBarSubtitleSupport, InfoBarPiP, InfoBarPlugins, InfoBarServiceErrorPopupSupport, InfoBarJobman, InfoBarZoom, InfoBarSleepTimer, InfoBarOpenOnTopHelper, \
+	InfoBarSubtitleSupport, InfoBarPiP, InfoBarPlugins, InfoBarServiceErrorPopupSupport, InfoBarJobman, InfoBarZoom, InfoBarSleepTimer, InfoBarOpenOnTopHelper, InfoBarHandleBsod, \
 	InfoBarHdmi, setResumePoint, delResumePoint
 from Screens.ButtonSetup import InfoBarButtonSetup
 
@@ -44,7 +44,7 @@ class InfoBar(InfoBarBase, InfoBarShowHide,
 	HelpableScreen, InfoBarAdditionalInfo, InfoBarNotifications, InfoBarDish, InfoBarUnhandledKey, InfoBarLongKeyDetection,
 	InfoBarSubserviceSelection, InfoBarTimeshift, InfoBarSeek, InfoBarCueSheetSupport, InfoBarBuffer,
 	InfoBarSummarySupport, InfoBarTimeshiftState, InfoBarTeletextPlugin, InfoBarExtensions,
-	InfoBarPiP, InfoBarPlugins, InfoBarSubtitleSupport, InfoBarServiceErrorPopupSupport, InfoBarJobman, InfoBarZoom, InfoBarSleepTimer, InfoBarOpenOnTopHelper,
+	InfoBarPiP, InfoBarPlugins, InfoBarSubtitleSupport, InfoBarServiceErrorPopupSupport, InfoBarJobman, InfoBarZoom, InfoBarSleepTimer, InfoBarOpenOnTopHelper, InfoBarHandleBsod, 
 	InfoBarHdmi, InfoBarButtonSetup, Screen):
 
 	ALLOW_SUSPEND = True
@@ -52,7 +52,7 @@ class InfoBar(InfoBarBase, InfoBarShowHide,
 
 	def __init__(self, session):
 		Screen.__init__(self, session)
-		if config.usage.show_infobar_lite.value and (config.skin.primary_skin.value.startswith('Adrenalinnrw_Mod_RED/')):
+		if config.usage.show_infobar_lite.value and (config.skin.primary_skin.value.startswith('DarknessHD/')):
 			self.skinName = "InfoBarLite"
 
 		self["actions"] = HelpableActionMap(self, "InfobarActions",
@@ -79,6 +79,7 @@ class InfoBar(InfoBarBase, InfoBarShowHide,
 				"showFormat": (self.showFormat, _("Show Format Setup...")),
 				"showPluginBrowser": (self.showPluginBrowser, _("Show the plugins...")),
 				"showBoxPortal": (self.showBoxPortal, _("Show Box Portal...")),
+				"openSimpleUnmount": (self.openSimpleUnmount, _("Simple umounter mass storage device.")),
 			}, prio=2)
 
 		self["key_red"] = Label()
@@ -95,7 +96,7 @@ class InfoBar(InfoBarBase, InfoBarShowHide,
 				InfoBarInstantRecord, InfoBarAudioSelection, InfoBarRedButton, InfoBarTimerButton, InfoBarUnhandledKey, InfoBarLongKeyDetection, InfoBarESIpanel, InfoBarResolutionSelection, InfoBarVmodeButton, \
 				InfoBarAdditionalInfo, InfoBarNotifications, InfoBarDish, InfoBarSubserviceSelection, InfoBarAspectSelection, InfoBarBuffer, \
 				InfoBarTimeshift, InfoBarSeek, InfoBarCueSheetSupport, InfoBarSummarySupport, InfoBarTimeshiftState, \
-				InfoBarTeletextPlugin, InfoBarExtensions, InfoBarPiP, InfoBarSubtitleSupport, InfoBarJobman, InfoBarZoom, InfoBarSleepTimer, InfoBarOpenOnTopHelper, \
+				InfoBarTeletextPlugin, InfoBarExtensions, InfoBarPiP, InfoBarSubtitleSupport, InfoBarJobman, InfoBarZoom, InfoBarSleepTimer, InfoBarOpenOnTopHelper, InfoBarHandleBsod, \
 				InfoBarHdmi, InfoBarPlugins, InfoBarServiceErrorPopupSupport, InfoBarButtonSetup:
 			x.__init__(self)
 
@@ -134,8 +135,10 @@ class InfoBar(InfoBarBase, InfoBarShowHide,
 			else:
 				self["key_red"].setText(_("ViX EPG"))
 
-			if not config.plisettings.Subservice.value:
+			if config.plisettings.Subservice.value == "0":
 				self["key_green"].setText(_("Timers"))
+			elif config.plisettings.Subservice.value == "1":
+				self["key_green"].setText(_("Plugins"))
 			else:
 				self["key_green"].setText(_("Subservices"))
 		self["key_blue"].setText(_("Extensions"))
@@ -310,6 +313,15 @@ class InfoBar(InfoBarBase, InfoBarShowHide,
 					break
 		except Exception, e:
 			self.session.open(MessageBox, _("The IMDb plugin is not installed!\nPlease install it."), type = MessageBox.TYPE_INFO,timeout = 10 )
+
+	def openSimpleUnmount(self):
+		try:
+			for plugin in plugins.getPlugins([PluginDescriptor.WHERE_PLUGINMENU ,PluginDescriptor.WHERE_EXTENSIONSMENU, PluginDescriptor.WHERE_EVENTINFO]):
+				if plugin.name == _("SimpleUmount"):
+					self.runPlugin(plugin)
+					break
+		except Exception, e:
+			self.session.open(MessageBox, _("The SimpleUmount plugin is not installed!\nPlease install it."), type = MessageBox.TYPE_INFO,timeout = 10 )
 
 	def ZoomInOut(self):
 		zoomval = 0

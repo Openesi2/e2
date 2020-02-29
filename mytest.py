@@ -10,7 +10,7 @@ profile("PYTHON_START")
 
 import Tools.RedirectOutput
 import enigma
-from boxbranding import getBoxType, getBrandOEM, getMachineBuild
+from boxbranding import getBoxType, getBrandOEM, getMachineBuild, getImageArch
 import eConsoleImpl
 import eBaseImpl
 enigma.eTimer = eBaseImpl.eTimer
@@ -18,9 +18,13 @@ enigma.eSocketNotifier = eBaseImpl.eSocketNotifier
 enigma.eConsoleAppContainer = eConsoleImpl.eConsoleAppContainer
 boxtype = getBoxType()
 
+if getImageArch() in ("aarch64"):
+	import usb.core
+	import usb.backend.libusb1
+	usb.backend.libusb1.get_backend(find_library=lambda x: "/lib64/libusb-1.0.so.0")
 
-if os.path.isfile("/usr/lib/enigma2/python/Plugins/Extensions/MediaPortal/plugin.pyo") and boxtype in ('dm7080','dm820','dm520','dm525','dm900','dm920'):
-	import pyo_patcher
+#if os.path.isfile("/usr/lib/enigma2/python/Plugins/Extensions/MediaPortal/plugin.pyo") and boxtype in ('dm7080','dm820','dm520','dm525','dm900','dm920'):
+#	import pyo_patcher
 
 from traceback import print_exc
 
@@ -126,6 +130,13 @@ except ImportError:
 		enigma.runMainloop()
 
 profile("LOAD:Plugin")
+
+from twisted.python import log
+config.misc.enabletwistedlog = ConfigYesNo(default = False)
+if config.misc.enabletwistedlog.value == True:
+	log.startLogging(open('/tmp/twisted.log', 'w'))
+else:
+	log.startLogging(sys.stdout)
 
 # initialize autorun plugins and plugin menu entries
 from Components.PluginComponent import plugins
@@ -315,8 +326,9 @@ class Session:
 
 	def openWithCallback(self, callback, screen, *arguments, **kwargs):
 		dlg = self.open(screen, *arguments, **kwargs)
-		dlg.callback = callback
-		return dlg
+		if dlg != 'config.crash.bsodpython.value=True':
+			dlg.callback = callback
+			return dlg
 
 	def open(self, screen, *arguments, **kwargs):
 		if self.dialog_stack and not self.in_exec:
@@ -324,7 +336,15 @@ class Session:
 			# ...unless it's the very first screen.
 
 		self.pushCurrent()
-		dlg = self.current_dialog = self.instantiateDialog(screen, *arguments, **kwargs)
+		if config.crash.bsodpython.value:
+			try:
+				dlg = self.current_dialog = self.instantiateDialog(screen, *arguments, **kwargs)
+			except:
+				self.popCurrent()
+				raise
+				return 'config.crash.bsodpython.value=True'
+		else:
+			dlg = self.current_dialog = self.instantiateDialog(screen, *arguments, **kwargs)
 		dlg.isTmp = True
 		dlg.callback = None
 		self.execBegin()
@@ -533,7 +553,9 @@ def runScreenTest():
 	config.misc.startCounter.value += 1
 
 	profile("readPluginList")
+	enigma.pauseInit()
 	plugins.readPluginList(resolveFilename(SCOPE_PLUGINS))
+	enigma.resumeInit()
 
 	profile("Init:Session")
 	nav = Navigation(config.misc.nextWakeup.value)
@@ -585,7 +607,7 @@ def runScreenTest():
 	profile("Init:PowerKey")
 	power = PowerKey(session)
 	
-	if boxtype in ('ustym4kpro','sf8008','clap4k','alien5','osninopro','osnino','osninoplus','alphatriple','spycat4kmini','tmtwin4k','mbmicrov2','revo4k','force3uhd','wetekplay', 'wetekplay2', 'wetekhub', 'dm7020hd', 'dm7020hdv2', 'osminiplus', 'osmega', 'sf3038', 'spycat', 'e4hd', 'e4hdhybrid', 'mbmicro', 'et7500', 'mixosf5', 'mixosf7', 'mixoslumi', 'gi9196m', 'maram9', 'ixussone', 'ixusszero', 'uniboxhd1', 'uniboxhd2', 'uniboxhd3', 'sezam5000hd', 'mbtwin', 'sezam1000hd', 'mbmini', 'atemio5x00', 'beyonwizt3', '9910lx', '9911lx') or getBrandOEM() in ('fulan') or getMachineBuild() in ('dags7362' , 'dags73625', 'dags5'):
+	if boxtype in ('alien5','osninopro','osnino','osninoplus','alphatriple','spycat4kmini','tmtwin4k','mbmicrov2','revo4k','force3uhd','wetekplay', 'wetekplay2', 'wetekhub', 'dm7020hd', 'dm7020hdv2', 'osminiplus', 'osmega', 'sf3038', 'spycat', 'e4hd', 'e4hdhybrid', 'mbmicro', 'et7500', 'mixosf5', 'mixosf7', 'mixoslumi', 'gi9196m', 'maram9', 'ixussone', 'ixusszero', 'uniboxhd1', 'uniboxhd2', 'uniboxhd3', 'sezam5000hd', 'mbtwin', 'sezam1000hd', 'mbmini', 'atemio5x00', 'beyonwizt3', '9910lx', '9911lx', '9920lx') or getBrandOEM() in ('fulan') or getMachineBuild() in ('u41','dags7362','dags73625','dags5','ustym4kpro','beyonwizv2','viper4k','sf8008','sf8008m','cc1','gbmv200'):
 		profile("VFDSYMBOLS")
 		import Components.VfdSymbols
 		Components.VfdSymbols.SymbolsCheck(session)
